@@ -1,0 +1,32 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environments
+.env
+.venv
+venv/
+ENV/
+env.bak
+
+# SQLite database files
+data/*.db
+data/*.db-journal
+data/*.sqlite3
+
+# Telethon session files
+data/tg_session*
+
+# Log files
+logs/
+*.log
+
+# IDE files
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
