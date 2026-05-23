@@ -51,7 +51,9 @@ export async function fetchTrudvsemVacancies(): Promise<Vacancy[]> {
           schedule: 'Удалённая работа', // Hardcoded as in Python to satisfy filter checks
           area: v.region?.name || 'РФ',
           description: v.duty || '',
-          requirements: v.requirement || '',
+          requirements: v.requirement && typeof v.requirement === 'object'
+            ? `${(v.requirement as any).education || ''} ${(v.requirement as any).qualifications || ''}`.trim()
+            : (v.requirement || ''),
           published_at: v.creation_date || ''
         });
       }

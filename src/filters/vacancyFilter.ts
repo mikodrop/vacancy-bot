@@ -3,10 +3,10 @@ import { logger } from '../utils/logger.js';
 import { Vacancy } from '../db/database.js';
 
 export function isValidVacancy(vacancy: Vacancy): boolean {
-  const title = (vacancy.title || '').toLowerCase();
-  const description = (vacancy.description || '').toLowerCase();
-  const requirements = (vacancy.requirements || '').toLowerCase();
-  const schedule = (vacancy.schedule || '').toLowerCase();
+  const title = String(vacancy.title || '').toLowerCase();
+  const description = String(vacancy.description || '').toLowerCase();
+  const requirements = String(vacancy.requirements || '').toLowerCase();
+  const schedule = String(vacancy.schedule || '').toLowerCase();
 
   const combinedText = `${title} ${description} ${requirements}`;
 
