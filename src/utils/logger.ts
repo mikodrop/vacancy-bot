@@ -1,4 +1,4 @@
-import pino from 'pino';
+import { pino } from 'pino';
 import path from 'path';
 import { fileURLToPath } from 'url';
 

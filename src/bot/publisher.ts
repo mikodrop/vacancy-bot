@@ -1,4 +1,4 @@
-import { Bot, HttpError, TelegramError } from 'grammy';
+import { Bot, HttpError, GrammyError } from 'grammy';
 import { config } from '../config/config.js';
 import { logger } from '../utils/logger.js';
 
@@ -36,7 +36,7 @@ export class Publisher {
         logger.info(`Message published successfully to ${channelId}`);
         return true;
       } catch (error) {
-        if (error instanceof TelegramError) {
+        if (error instanceof GrammyError) {
           logger.error(`Telegram API Error (code ${error.error_code}): ${error.description}`);
           
           // Handle Flood Limit (429)
@@ -50,7 +50,7 @@ export class Publisher {
         } else if (error instanceof HttpError) {
           logger.error(`Network HTTP Error: ${error.message}`);
         } else {
-          logger.error(error, 'Unexpected error while sending message to Telegram');
+          logger.error(error as Error, 'Unexpected error while sending message to Telegram');
         }
         
         break; // Non-retryable error
