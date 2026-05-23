@@ -1,3 +1,10 @@
+# Dependency directories
+node_modules/
+jspm_packages/
+
+# TypeScript build output
+dist/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -15,7 +22,7 @@ data/*.db
 data/*.db-journal
 data/*.sqlite3
 
-# Telethon session files
+# Telethon/GramJS session files
 data/tg_session*
 
 # Log files

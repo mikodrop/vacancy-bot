@@ -1,0 +1,32 @@
+{
+  "name": "vacancy-bot",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx src/main.ts",
+    "build": "tsc",
+    "start": "node dist/main.js",
+    "test": "tsx src/main.ts --test",
+    "test:source": "tsx src/main.ts --test --source"
+  },
+  "dependencies": {
+    "axios": "^1.6.8",
+    "better-sqlite3": "^9.4.3",
+    "cheerio": "^1.0.0-rc.12",
+    "dotenv": "^16.4.5",
+    "fast-xml-parser": "^4.3.9",
+    "grammy": "^1.22.4",
+    "node-cron": "^3.0.3",
+    "pino": "^8.21.0",
+    "pino-pretty": "^11.0.0",
+    "telegram": "^2.22.2",
+    "vk-io": "^4.8.4"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.9",
+    "@types/node": "^20.12.7",
+    "@types/node-cron": "^3.0.11",
+    "typescript": "^5.4.5",
+    "tsx": "^4.7.2"
+  }
+}
