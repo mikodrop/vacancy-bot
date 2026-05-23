@@ -17,10 +17,11 @@ venv/
 ENV/
 env.bak
 
-# SQLite database files
+# SQLite/JSON database files
 data/*.db
 data/*.db-journal
 data/*.sqlite3
+data/vacancies.json
 
 # Telethon/GramJS session files
 data/tg_session*

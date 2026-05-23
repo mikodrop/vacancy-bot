@@ -1,4 +1,5 @@
-import sqlite from 'better-sqlite3';
+import fs from 'fs';
+import path from 'path';
 import crypto from 'crypto';
 import { config } from '../config/config.js';
 import { logger } from '../utils/logger.js';
@@ -19,42 +20,41 @@ export interface Vacancy {
 }
 
 export class Database {
-  private db: sqlite.Database;
+  private filePath: string;
+  private vacancies: Vacancy[] = [];
 
   constructor() {
-    logger.debug(`Initializing database at: ${config.DB_PATH}`);
-    this.db = new sqlite(config.DB_PATH);
+    this.filePath = path.join(config.BASE_DIR, 'data/vacancies.json');
+    logger.debug(`Initializing JSON database at: ${this.filePath}`);
     this.initDb();
   }
 
   private initDb() {
     try {
-      this.db.exec(`
-        CREATE TABLE IF NOT EXISTS published_vacancies (
-          id          INTEGER PRIMARY KEY AUTOINCREMENT,
-          source      TEXT NOT NULL,
-          vacancy_id  TEXT NOT NULL,
-          title       TEXT,
-          company     TEXT,
-          salary_from INTEGER,
-          salary_to   INTEGER,
-          url         TEXT,
-          published_at TEXT,
-          posted_at   TEXT DEFAULT CURRENT_TIMESTAMP,
-          title_hash  TEXT,
-          UNIQUE(source, vacancy_id)
-        );
+      const dir = path.dirname(this.filePath);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
 
-        CREATE TABLE IF NOT EXISTS sources_config (
-          source  TEXT PRIMARY KEY,
-          enabled INTEGER DEFAULT 1,
-          last_check TEXT
-        );
-      `);
-      logger.debug('Database tables initialized successfully');
+      if (fs.existsSync(this.filePath)) {
+        const data = fs.readFileSync(this.filePath, 'utf-8');
+        this.vacancies = JSON.parse(data || '[]');
+      } else {
+        this.vacancies = [];
+        this.save();
+      }
+      logger.debug(`JSON database loaded: ${this.vacancies.length} vacancies.`);
     } catch (error) {
-      logger.error(error, 'Error initializing database tables');
-      throw error;
+      logger.error(error, 'Error initializing JSON database. Resetting to empty.');
+      this.vacancies = [];
+    }
+  }
+
+  private save() {
+    try {
+      fs.writeFileSync(this.filePath, JSON.stringify(this.vacancies, null, 2), 'utf-8');
+    } catch (error) {
+      logger.error(error, 'Error saving JSON database');
     }
   }
 
@@ -64,115 +64,47 @@ export class Database {
   }
 
   public exists(source: string, vacancyId: string): boolean {
-    try {
-      const stmt = this.db.prepare(
-        'SELECT 1 FROM published_vacancies WHERE source = ? AND vacancy_id = ?'
-      );
-      const result = stmt.get(source, vacancyId);
-      return !!result;
-    } catch (error) {
-      logger.error(error, `Error checking vacancy existence for ${source}:${vacancyId}`);
-      return false;
-    }
+    return this.vacancies.some(
+      (v) => v.source === source && v.vacancy_id === vacancyId
+    );
   }
 
   public existsByUrl(url: string): boolean {
     if (!url) return false;
-    try {
-      const stmt = this.db.prepare(
-        'SELECT 1 FROM published_vacancies WHERE url = ?'
-      );
-      const result = stmt.get(url);
-      return !!result;
-    } catch (error) {
-      logger.error(error, `Error checking existence by URL: ${url}`);
-      return false;
-    }
+    return this.vacancies.some((v) => v.url === url);
   }
 
   public existsByHash(title: string, company: string): boolean {
     if (!title || !company) return false;
-    const titleHash = this.getHash(title, company);
-    try {
-      const stmt = this.db.prepare(
-        'SELECT 1 FROM published_vacancies WHERE title_hash = ?'
-      );
-      const result = stmt.get(titleHash);
-      return !!result;
-    } catch (error) {
-      logger.error(error, `Error checking existence by hash for ${title} @ ${company}`);
-      return false;
-    }
+    const targetHash = this.getHash(title, company);
+    return this.vacancies.some(
+      (v) => this.getHash(v.title, v.company) === targetHash
+    );
   }
 
   public insert(vacancy: Vacancy): boolean {
-    const titleHash = this.getHash(vacancy.title, vacancy.company);
-    try {
-      const stmt = this.db.prepare(`
-        INSERT OR IGNORE INTO published_vacancies (
-          source, vacancy_id, title, company, salary_from, salary_to, url, published_at, title_hash
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `);
-      const info = stmt.run(
-        vacancy.source,
-        vacancy.vacancy_id,
-        vacancy.title,
-        vacancy.company,
-        vacancy.salary_from ?? null,
-        vacancy.salary_to ?? null,
-        vacancy.url,
-        vacancy.published_at || null,
-        titleHash
-      );
-      
-      const success = info.changes > 0;
-      if (success) {
-        logger.debug(`Vacancy inserted into DB: ${vacancy.source}:${vacancy.vacancy_id}`);
-      } else {
-        logger.warn(`Vacancy already exists in DB (duplicate constraint): ${vacancy.source}:${vacancy.vacancy_id}`);
-      }
-      return success;
-    } catch (error) {
-      logger.error(error, `Error inserting vacancy: ${vacancy.source}:${vacancy.vacancy_id}`);
+    if (this.exists(vacancy.source, vacancy.vacancy_id)) {
       return false;
     }
+    this.vacancies.push(vacancy);
+    this.save();
+    logger.debug(`Vacancy inserted into JSON database: ${vacancy.source}:${vacancy.vacancy_id}`);
+    return true;
   }
 
   public getStats(): Record<string, number> {
-    try {
-      const stmt = this.db.prepare(
-        'SELECT source, COUNT(*) as count FROM published_vacancies GROUP BY source'
-      );
-      const rows = stmt.all() as { source: string; count: number }[];
-      const stats: Record<string, number> = {};
-      for (const row of rows) {
-        stats[row.source] = row.count;
-      }
-      return stats;
-    } catch (error) {
-      logger.error(error, 'Error getting database stats');
-      return {};
+    const stats: Record<string, number> = {};
+    for (const v of this.vacancies) {
+      stats[v.source] = (stats[v.source] || 0) + 1;
     }
+    return stats;
   }
 
   public getRecent(limit = 10): any[] {
-    try {
-      const stmt = this.db.prepare(
-        'SELECT * FROM published_vacancies ORDER BY posted_at DESC LIMIT ?'
-      );
-      return stmt.all(limit);
-    } catch (error) {
-      logger.error(error, 'Error getting recent vacancies');
-      return [];
-    }
+    return this.vacancies.slice(-limit).reverse();
   }
 
   public close() {
-    try {
-      this.db.close();
-      logger.debug('Database connection closed');
-    } catch (error) {
-      logger.error(error, 'Error closing database connection');
-    }
+    logger.debug('JSON Database connection closed (no-op)');
   }
 }
